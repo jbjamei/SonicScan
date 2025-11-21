@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BulkSongEntry } from '../types';
 
 interface BulkResultListProps {
@@ -8,7 +8,38 @@ interface BulkResultListProps {
   onReset: () => void;
 }
 
+const LOADING_PHRASES = [
+  "ANALYZING PIXELS",
+  "CALIBRATING HOLTZMAN FLUCTUATION",
+  "RETICULATING SPLINES",
+  "CUTTING THE FLEEB",
+  "DISCHARGING IONIZED MUONS",
+  "CHARGING WUB DRIVE",
+  "WOPPING THE WANDY",
+  "DEFRAGMENTING SUB-BASS FREQUENCIES",
+  "SYNCHRONIZING NEURAL NETWORKS"
+];
+
 export const BulkResultList: React.FC<BulkResultListProps> = ({ results, isLoading, onReset }) => {
+  const [loadingMessage, setLoadingMessage] = useState(LOADING_PHRASES[0]);
+
+  useEffect(() => {
+    if (!isLoading) {
+        setLoadingMessage(LOADING_PHRASES[0]);
+        return;
+    }
+
+    const interval = setInterval(() => {
+      setLoadingMessage(prev => {
+        const currentIndex = LOADING_PHRASES.indexOf(prev);
+        const nextIndex = (currentIndex + 1) % LOADING_PHRASES.length;
+        return LOADING_PHRASES[nextIndex];
+      });
+    }, 1800); // Change phrase every 1.8 seconds
+
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
   return (
     <div className="relative rounded-2xl bg-cyber-mid/90 backdrop-blur-xl border border-white/10 overflow-hidden h-full flex flex-col min-h-[400px]">
       
@@ -39,7 +70,7 @@ export const BulkResultList: React.FC<BulkResultListProps> = ({ results, isLoadi
                 </svg>
             </div>
             <div className="text-center">
-                <div className="text-emerald-400 font-mono font-bold">ANALYZING PIXELS</div>
+                <div className="text-emerald-400 font-mono font-bold uppercase tracking-wider animate-pulse">{loadingMessage}</div>
                 <div className="text-gray-500 text-sm mt-2">Extracting text and retrieving sonic data...</div>
             </div>
         </div>
