@@ -44,16 +44,16 @@ export const BulkResultList: React.FC<BulkResultListProps> = ({ results, isLoadi
     <div className="relative rounded-2xl bg-cyber-mid/90 backdrop-blur-xl border border-white/10 overflow-hidden h-full flex flex-col min-h-[400px]">
       
       {/* Header */}
-      <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
-        <h2 className="text-xl font-bold flex items-center gap-2">
+      <div className="p-4 sm:p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+        <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
            <span className="text-cyber-glow">Bulk</span> Analysis
-           <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono">
+           <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] sm:text-xs font-mono whitespace-nowrap">
              {isLoading ? 'SCANNING...' : `${results.length} DETECTED`}
            </span>
         </h2>
         <button 
             onClick={onReset}
-            className="text-sm text-gray-400 hover:text-white hover:underline underline-offset-4"
+            className="text-xs sm:text-sm text-gray-400 hover:text-white hover:underline underline-offset-4"
         >
             Clear Results
         </button>
@@ -69,7 +69,7 @@ export const BulkResultList: React.FC<BulkResultListProps> = ({ results, isLoadi
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z" />
                 </svg>
             </div>
-            <div className="text-center">
+            <div className="text-center px-4">
                 <div className="text-emerald-400 font-mono font-bold uppercase tracking-wider animate-pulse">{loadingMessage}</div>
                 <div className="text-gray-500 text-sm mt-2">Extracting text and retrieving sonic data...</div>
             </div>
@@ -79,40 +79,42 @@ export const BulkResultList: React.FC<BulkResultListProps> = ({ results, isLoadi
       {/* Results Table */}
       {!isLoading && results.length > 0 && (
         <div className="flex-1 overflow-auto custom-scrollbar">
-            <table className="w-full text-left border-collapse">
-                <thead className="bg-black/20 sticky top-0 backdrop-blur-sm z-10">
-                    <tr>
-                        <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Track</th>
-                        <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Genre Classification</th>
-                        <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Key / Camelot</th>
-                        <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">BPM</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                    {results.map((track, i) => (
-                        <tr key={i} className="hover:bg-white/5 transition-colors group">
-                            <td className="p-4 align-top">
-                                <div className="font-bold text-white text-base mb-0.5">{track.title}</div>
-                                <div className="text-sm text-gray-400">{track.artist}</div>
-                            </td>
-                            <td className="p-4 align-top">
-                                <div className="flex items-center gap-2 pt-1">
-                                    <span className="text-emerald-400 font-bold text-base">{track.genre}</span>
-                                    <span className="text-gray-600">-</span>
-                                    <span className="text-emerald-200/80 font-medium text-base">{track.subgenre}</span>
-                                </div>
-                            </td>
-                            <td className="p-4 align-top text-right font-mono">
-                                <div className="text-emerald-400 font-bold text-lg leading-none">{track.camelot}</div>
-                                <div className="text-gray-500 mt-1 text-xs">{track.key}</div>
-                            </td>
-                            <td className="p-4 align-top text-right font-mono text-base font-bold text-white pt-3">
-                                {track.bpm}
-                            </td>
+            <div className="min-w-[600px] overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-black/20 sticky top-0 backdrop-blur-sm z-10">
+                        <tr>
+                            <th className="p-2 sm:p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Track</th>
+                            <th className="p-2 sm:p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Genre Classification</th>
+                            <th className="p-2 sm:p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Key / Camelot</th>
+                            <th className="p-2 sm:p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">BPM</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                        {results.map((track, i) => (
+                            <tr key={i} className="hover:bg-white/5 transition-colors group">
+                                <td className="p-2 sm:p-4 align-top">
+                                    <div className="font-bold text-white text-sm sm:text-base mb-0.5">{track.title}</div>
+                                    <div className="text-xs sm:text-sm text-gray-400">{track.artist}</div>
+                                </td>
+                                <td className="p-2 sm:p-4 align-top">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 pt-1">
+                                        <span className="text-emerald-400 font-bold text-sm sm:text-base">{track.genre}</span>
+                                        <span className="hidden sm:inline text-gray-600">-</span>
+                                        <span className="text-emerald-200/80 font-medium text-sm sm:text-base">{track.subgenre}</span>
+                                    </div>
+                                </td>
+                                <td className="p-2 sm:p-4 align-top text-right font-mono">
+                                    <div className="text-emerald-400 font-bold text-base sm:text-lg leading-none">{track.camelot}</div>
+                                    <div className="text-gray-500 mt-1 text-[10px] sm:text-xs whitespace-nowrap">{track.key}</div>
+                                </td>
+                                <td className="p-2 sm:p-4 align-top text-right font-mono text-sm sm:text-base font-bold text-white pt-3">
+                                    {track.bpm}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
       )}
       

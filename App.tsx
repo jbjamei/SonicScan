@@ -9,7 +9,7 @@ import { AuthModal } from './components/AuthModal';
 import { Dashboard } from './components/Dashboard';
 import { AnalysisHistory } from './components/AnalysisHistory';
 import { PlayerState, AudioAnalysis, Track, BulkSongEntry, User, Page, HistoryItem } from './types';
-import { analyzeAudio, analyzeImageForBulkSongs } from './services/geminiService';
+import { analyzeAudio, analyzeImageForBulkSongs, analyzeTracklistText } from './services/geminiService';
 import { searchTracks } from './services/itunesService';
 import { getSession, saveSession, clearSession, addToHistory } from './services/storageService';
 
@@ -35,7 +35,7 @@ const App: React.FC = () => {
   const [volume, setVolume] = useState(0.7);
   
   // UI State (Scan Page)
-  const [activeTab, setActiveTab] = useState<'search' | 'upload' | 'bulk'>('search');
+  const [activeTab, setActiveTab] = useState<'search' | 'upload' | 'bulk' | 'library'>('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Track[]>([]);
@@ -46,6 +46,9 @@ const App: React.FC = () => {
   // Bulk Analysis State
   const [bulkResults, setBulkResults] = useState<BulkSongEntry[]>([]);
   const [isBulkAnalyzing, setIsBulkAnalyzing] = useState(false);
+  
+  // Library State
+  const [libraryProgress, setLibraryProgress] = useState<{processed: number, total: number} | null>(null);
 
   // Audio Refs
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -188,9 +191,23 @@ const App: React.FC = () => {
     try {
       const results = await analyzeImageForBulkSongs(file);
       setBulkResults(results);
-      
-      // SAVE TO HISTORY
-      if (user) {
+      saveBulkToHistory(results);
+    } catch (e) {
+      console.error("Bulk upload failed", e);
+      alert("Failed to analyze image. Please ensure it is a clear screenshot of a tracklist.");
+    } finally {
+      setIsBulkAnalyzing(false);
+    }
+  };
+  
+  const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+       handleBulkImageUpload(e.target.files[0]);
+    }
+  };
+
+  const saveBulkToHistory = (results: BulkSongEntry[]) => {
+    if (user) {
         const historyItems: HistoryItem[] = results.map(r => ({
             id: crypto.randomUUID(),
             date: new Date().toISOString().split('T')[0],
@@ -206,19 +223,86 @@ const App: React.FC = () => {
         }));
         addToHistory(user.username, historyItems);
       }
-
-    } catch (e) {
-      console.error("Bulk upload failed", e);
-      alert("Failed to analyze image. Please ensure it is a clear screenshot of a tracklist.");
-    } finally {
-      setIsBulkAnalyzing(false);
-    }
   };
-  
-  const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-       handleBulkImageUpload(e.target.files[0]);
-    }
+
+  // Handle CSV Library Upload (Batch Processing)
+  const handleLibraryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsBulkAnalyzing(true);
+    setBulkResults([]);
+    setLibraryProgress({ processed: 0, total: 0 });
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        const text = event.target?.result as string;
+        if (!text) return;
+
+        // Simple CSV parsing assuming standard DJ export format (Title, Artist, etc)
+        // We just split by lines for now and let Gemini infer the headers or content.
+        // To be more robust for 4000 songs, we'll batch 50 lines at a time.
+        const allLines = text.split('\n').filter(line => line.trim() !== '');
+        // Assume header is first line
+        const header = allLines[0];
+        const tracks = allLines.slice(1);
+        
+        const BATCH_SIZE = 50;
+        const totalBatches = Math.ceil(tracks.length / BATCH_SIZE);
+        let accumulatedResults: BulkSongEntry[] = [];
+
+        setLibraryProgress({ processed: 0, total: tracks.length });
+
+        try {
+            for (let i = 0; i < totalBatches; i++) {
+                const batch = tracks.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+                const batchText = [header, ...batch].join('\n');
+                
+                // Analyze this batch
+                const results = await analyzeTracklistText(batchText);
+                accumulatedResults = [...accumulatedResults, ...results];
+                
+                // Update state incrementally
+                setBulkResults([...accumulatedResults]);
+                setLibraryProgress({ 
+                    processed: Math.min((i + 1) * BATCH_SIZE, tracks.length), 
+                    total: tracks.length 
+                });
+            }
+
+            // Final Save
+            saveBulkToHistory(accumulatedResults);
+
+        } catch (err) {
+            console.error("Library analysis failed:", err);
+            alert("Error processing library. Check console for details.");
+        } finally {
+            setIsBulkAnalyzing(false);
+            setLibraryProgress(null);
+        }
+    };
+    reader.readAsText(file);
+  };
+
+  // Download CSV
+  const handleDownloadCSV = () => {
+      if (bulkResults.length === 0) return;
+      
+      const headers = ['Title', 'Artist', 'Genre', 'Subgenre', 'BPM', 'Key', 'Camelot'];
+      const rows = bulkResults.map(r => 
+          `"${r.title}","${r.artist}","${r.genre}","${r.subgenre}","${r.bpm}","${r.key}","${r.camelot}"`
+      );
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'sonic_scan_library_export.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
   };
 
   // Handle Search Input
@@ -355,38 +439,66 @@ const App: React.FC = () => {
     }
 
     // Default: Scan Page
-    if (activeTab === 'bulk') {
+    if (activeTab === 'bulk' || activeTab === 'library') {
       return (
         <div className="flex flex-col gap-8 animate-in fade-in duration-300">
            {/* Bulk Upload Section - Only show if no results */}
            {bulkResults.length === 0 && (
-               <div className="bg-cyber-mid/40 border border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center text-center shadow-2xl animate-in fade-in zoom-in-95 duration-500 relative overflow-hidden">
+               <div className="bg-cyber-mid/40 border border-white/10 rounded-2xl p-6 sm:p-12 flex flex-col items-center justify-center text-center shadow-2xl animate-in fade-in zoom-in-95 duration-500 relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 to-emerald-900/10 pointer-events-none"></div>
                     
-                    <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-emerald-400 relative z-10">Batch Analysis</h2>
-                    <p className="text-gray-400 mb-8 max-w-lg relative z-10 leading-relaxed">
-                        Drag and drop a screenshot of your music library, Spotify playlist, or tracklist.<br/>
-                        The AI will extract track data and identify genres, keys, and BPMs automatically.
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-emerald-400 relative z-10">
+                        {activeTab === 'library' ? 'Library Processing' : 'Batch Analysis'}
+                    </h2>
+                    <p className="text-gray-400 mb-8 max-w-lg relative z-10 leading-relaxed text-sm sm:text-base">
+                        {activeTab === 'library' 
+                           ? "Upload your DJ export (CSV/TXT) to update metadata for your entire collection."
+                           : "Drag and drop a screenshot of your music library, Spotify playlist, or tracklist."
+                        }
                     </p>
                     
                     <label htmlFor="bulk-dropzone" className="relative z-10 flex flex-col items-center justify-center w-full max-w-xl h-48 border-2 border-dashed border-purple-500/30 rounded-2xl cursor-pointer bg-black/40 hover:bg-purple-900/10 hover:border-purple-500/50 transition-all group">
                         {isBulkAnalyzing ? (
                             <div className="flex flex-col items-center gap-3 text-purple-400">
                                 <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                                <span className="font-mono text-sm animate-pulse tracking-wider">PROCESSING IMAGE...</span>
+                                <div className="flex flex-col items-center">
+                                    <span className="font-mono text-sm animate-pulse tracking-wider">
+                                        {libraryProgress 
+                                          ? `PROCESSING ${libraryProgress.processed} / ${libraryProgress.total}` 
+                                          : 'ANALYZING...'
+                                        }
+                                    </span>
+                                    {libraryProgress && (
+                                        <div className="w-48 h-1 bg-gray-700 rounded-full mt-2 overflow-hidden">
+                                            <div className="h-full bg-purple-500 transition-all duration-300" style={{width: `${(libraryProgress.processed / libraryProgress.total) * 100}%`}}></div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center gap-4 text-gray-400 group-hover:text-purple-300 transition-colors">
+                            <div className="flex flex-col items-center gap-4 text-gray-400 group-hover:text-purple-300 transition-colors p-4">
                                 <div className="p-4 rounded-full bg-white/5 group-hover:bg-purple-500/10 transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
                                     </svg>
                                 </div>
-                                <p className="text-base"><span className="font-semibold text-purple-400">Upload Screenshot</span> or Paste (Ctrl+V)</p>
+                                <p className="text-sm sm:text-base text-center">
+                                    <span className="font-semibold text-purple-400">
+                                        {activeTab === 'library' ? "Upload CSV / Text" : "Upload Screenshot"}
+                                    </span> 
+                                    <br/>or Paste (Ctrl+V)
+                                </p>
                             </div>
                         )}
-                        <input id="bulk-dropzone" type="file" className="hidden" accept="image/*" onChange={handleBulkFileChange} disabled={isBulkAnalyzing} />
+                        <input 
+                            id="bulk-dropzone" 
+                            type="file" 
+                            className="hidden" 
+                            accept={activeTab === 'library' ? ".csv,.txt" : "image/*"}
+                            onChange={activeTab === 'library' ? handleLibraryUpload : handleBulkFileChange} 
+                            disabled={isBulkAnalyzing} 
+                        />
                     </label>
                </div>
            )}
@@ -398,6 +510,19 @@ const App: React.FC = () => {
                   isLoading={isBulkAnalyzing} 
                   onReset={() => setBulkResults([])} 
               />
+              {bulkResults.length > 0 && activeTab === 'library' && (
+                  <div className="mt-4 flex justify-center">
+                      <button 
+                        onClick={handleDownloadCSV}
+                        className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 px-8 rounded-full shadow-lg transition-all hover:scale-105 flex items-center gap-2"
+                      >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                          Download Updated CSV
+                      </button>
+                  </div>
+              )}
            </div>
         </div>
       );
@@ -407,7 +532,7 @@ const App: React.FC = () => {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:h-[650px] animate-in fade-in duration-300">
         {/* LEFT COLUMN: Inputs + Player */}
-        <div className="flex flex-col gap-6 h-full">
+        <div className="flex flex-col gap-6 h-full order-2 lg:order-1">
           
            {/* Input Section */}
            <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-md">
@@ -523,13 +648,13 @@ const App: React.FC = () => {
                         </div>
                     )}
                     <div>
-                        <div className="text-white font-bold leading-none mb-1 text-lg shadow-black drop-shadow-md">{currentTrack.title}</div>
+                        <div className="text-white font-bold leading-none mb-1 text-lg shadow-black drop-shadow-md line-clamp-1">{currentTrack.title}</div>
                         <div className="text-gray-300 text-xs uppercase tracking-wide flex items-center gap-1">
-                          {currentTrack.artist}
+                          <span className="line-clamp-1">{currentTrack.artist}</span>
                           {currentTrack.primaryGenre && (
                             <>
                               <span className="mx-1 text-gray-600">•</span>
-                              <span className="text-emerald-400">{currentTrack.primaryGenre}</span>
+                              <span className="text-emerald-400 line-clamp-1">{currentTrack.primaryGenre}</span>
                             </>
                           )}
                         </div>
@@ -555,11 +680,11 @@ const App: React.FC = () => {
              </div>
 
              <div className="flex items-center justify-between">
-                 <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-4 w-full">
                      <button 
                       onClick={togglePlay}
                       disabled={!fileURL}
-                      className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-black hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg hover:shadow-emerald-500/30"
+                      className="w-10 h-10 flex-shrink-0 rounded-full bg-emerald-500 flex items-center justify-center text-black hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg hover:shadow-emerald-500/30"
                      >
                        {playerState === PlayerState.PLAYING ? (
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -572,8 +697,8 @@ const App: React.FC = () => {
                        )}
                      </button>
                      
-                     <div className="flex items-center gap-2 group">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400 group-hover:text-white">
+                     <div className="flex items-center gap-2 group flex-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400 group-hover:text-white flex-shrink-0">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
                           </svg>
                           <input 
@@ -583,7 +708,7 @@ const App: React.FC = () => {
                               step="0.01"
                               value={volume}
                               onChange={(e) => setVolume(parseFloat(e.target.value))}
-                              className="w-24 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-white hover:accent-emerald-400"
+                              className="w-full max-w-[150px] h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-white hover:accent-emerald-400"
                           />
                      </div>
                  </div>
@@ -592,7 +717,7 @@ const App: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN: Analysis */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full order-1 lg:order-2">
              <AnalysisCard 
                 analysis={analysisResult} 
                 isLoading={isAnalyzing} 
@@ -629,24 +754,30 @@ const App: React.FC = () => {
       {currentPage === 'scan' && (
         <div className="sticky top-16 z-40 bg-slate-900/50 backdrop-blur-md border-b border-white/5 animate-in fade-in slide-in-from-top-4">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <nav className="flex gap-8">
+                <nav className="flex gap-4 sm:gap-8 overflow-x-auto custom-scrollbar no-scrollbar-on-mobile">
                     <button 
                         onClick={() => setActiveTab('search')}
-                        className={`py-4 text-sm font-semibold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'search' ? 'text-emerald-400 border-emerald-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                        className={`py-4 text-sm font-semibold uppercase tracking-widest transition-colors border-b-2 whitespace-nowrap ${activeTab === 'search' ? 'text-emerald-400 border-emerald-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
                     >
                         Web Search
                     </button>
                     <button 
                         onClick={() => setActiveTab('upload')}
-                        className={`py-4 text-sm font-semibold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'upload' ? 'text-emerald-400 border-emerald-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                        className={`py-4 text-sm font-semibold uppercase tracking-widest transition-colors border-b-2 whitespace-nowrap ${activeTab === 'upload' ? 'text-emerald-400 border-emerald-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
                     >
                         File Upload
                     </button>
                     <button 
                         onClick={() => setActiveTab('bulk')}
-                        className={`py-4 text-sm font-semibold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'bulk' ? 'text-purple-400 border-purple-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                        className={`py-4 text-sm font-semibold uppercase tracking-widest transition-colors border-b-2 whitespace-nowrap ${activeTab === 'bulk' ? 'text-purple-400 border-purple-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
                     >
                         Bulk Scan
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('library')}
+                        className={`py-4 text-sm font-semibold uppercase tracking-widest transition-colors border-b-2 whitespace-nowrap ${activeTab === 'library' ? 'text-blue-400 border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                    >
+                        Library
                     </button>
                 </nav>
             </div>

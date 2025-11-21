@@ -1,7 +1,5 @@
 {
   "name": "SonicScan AI",
   "description": "A cyberpunk-styled audio analysis tool that visualizes music and identifies genres using the Gemini API.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
+  "requestFramePermissions": []
 }

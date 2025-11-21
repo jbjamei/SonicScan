@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AudioAnalysis, Track, BulkSongEntry } from "../types";
 import { SYSTEM_INSTRUCTION } from "../constants";
@@ -175,6 +174,72 @@ export const analyzeImageForBulkSongs = async (file: File): Promise<BulkSongEntr
 
   } catch (error) {
     console.error("Gemini Bulk Analysis Error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Analyzes text content (e.g. CSV) containing a list of songs.
+ */
+export const analyzeTracklistText = async (text: string): Promise<BulkSongEntry[]> => {
+  const prompt = `
+    Analyze this text. It contains a list of music tracks (Artist and Title).
+    
+    Tasks:
+    1. Parse the text to extract every song Title and Artist.
+    2. Based on your musical knowledge of these specific tracks, estimate the likely Genre, Subgenre, BPM, Camelot Key, and Musical Key for EACH track.
+    
+    GENRE RULES:
+    - 'genre' field: Do NOT use broad terms like "Electronic". Use the specific parent genre.
+    - 'subgenre' field: Be highly specific (e.g., "Deep Dubstep", "Liquid Funk", "Tech House").
+    
+    Return a strict JSON Array.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash', 
+      config: {
+        systemInstruction: "You are a music librarian and sonic analyst. Your job is to digitize tracklists and enrich them with metadata.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+               title: { type: Type.STRING },
+               artist: { type: Type.STRING },
+               genre: { type: Type.STRING },
+               subgenre: { type: Type.STRING },
+               bpm: { type: Type.STRING },
+               key: { type: Type.STRING },
+               camelot: { type: Type.STRING }
+            },
+            required: ["title", "artist", "genre", "subgenre", "bpm", "key", "camelot"]
+          }
+        }
+      },
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt
+            },
+            {
+              text: text
+            }
+          ]
+        }
+      ]
+    });
+
+    const responseText = response.text;
+    if (!responseText) throw new Error("No response from Gemini");
+    
+    return JSON.parse(responseText) as BulkSongEntry[];
+
+  } catch (error) {
+    console.error("Gemini Text Analysis Error:", error);
     throw error;
   }
 };
