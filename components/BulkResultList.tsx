@@ -78,9 +78,9 @@ export const BulkResultList: React.FC<BulkResultListProps> = ({ results, isLoadi
 
       {/* Results Table */}
       {!isLoading && results.length > 0 && (
-        <div className="flex-1 overflow-auto custom-scrollbar">
-            <div className="min-w-[600px] overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+        <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-x-auto custom-scrollbar">
+                <table className="w-full min-w-[600px] text-left border-collapse">
                     <thead className="bg-black/20 sticky top-0 backdrop-blur-sm z-10">
                         <tr>
                             <th className="p-2 sm:p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Track</th>

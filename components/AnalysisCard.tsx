@@ -67,15 +67,19 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, isLoading,
             {analysis && !isLoading && (
                 <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                     
-                    {/* Primary Stats */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Primary Stats - Stacked on mobile/tablet (md) to prevent text cut-off */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                             <div className="text-xs text-gray-400 uppercase tracking-widest mb-1">Primary Genre</div>
-                            <div className="text-xl sm:text-2xl font-bold text-white leading-tight break-words">{analysis.genre}</div>
+                            <div className="text-xl sm:text-2xl font-bold text-white leading-tight break-words whitespace-normal">
+                                {analysis.genre}
+                            </div>
                         </div>
                         <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                             <div className="text-xs text-gray-400 uppercase tracking-widest mb-1">Subgenre</div>
-                            <div className="text-lg sm:text-xl font-semibold text-emerald-400 leading-tight break-words">{analysis.subgenre}</div>
+                            <div className="text-lg sm:text-xl font-semibold text-emerald-400 leading-tight break-words whitespace-normal">
+                                {analysis.subgenre}
+                            </div>
                         </div>
                     </div>
 
