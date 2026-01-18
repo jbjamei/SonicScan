@@ -9,6 +9,9 @@ export interface AudioAnalysis {
   bpm: string;
   key: string;
   camelot: string;
+  rhythmType: 'Straight 4/4' | 'Syncopated / Broken' | 'Half-time' | 'Complex';
+  sonicMarkers: string[];
+  feedback?: 'up' | 'down' | 'refine_more'; 
 }
 
 export enum PlayerState {
@@ -33,6 +36,7 @@ export interface Track {
 }
 
 export interface BulkSongEntry {
+  id: string;
   title: string;
   artist: string;
   genre: string;
@@ -40,12 +44,14 @@ export interface BulkSongEntry {
   bpm: string;
   key: string;
   camelot: string;
+  isRefining?: boolean;
+  feedback?: 'up' | 'down' | 'refine_more';
 }
 
 export interface User {
   username: string;
   email: string;
-  password?: string; // Only used for matching, stored insecurely in localStorage for prototype
+  password?: string;
   avatarUrl?: string;
   memberSince: string;
 }
@@ -62,6 +68,7 @@ export interface HistoryItem {
   bpm: string;
   key: string;
   camelot: string;
+  feedback?: 'up' | 'down' | 'refine_more';
 }
 
 export interface DashboardStats {
