@@ -9,8 +9,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // Polyfill process.env.API_KEY for the browser
-      'process.env.API_KEY': JSON.stringify(env.API_KEY)
+      // Polyfill process.env.GEMINI_API_KEY for the browser
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
     }
   }
 })

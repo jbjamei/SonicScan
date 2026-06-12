@@ -48,7 +48,14 @@ export const AnalysisHistory: React.FC = () => {
                         <div className="text-[10px] opacity-50 uppercase">{item.type} SCAN</div>
                     </td>
                     <td className="p-4 align-top">
-                        <div className="font-bold text-white">{item.title}</div>
+                        <div className="flex items-center gap-2">
+                            <div className="font-bold text-white">{item.title}</div>
+                            {item.isExplicit && (
+                                <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-[8px] font-bold uppercase tracking-tighter">
+                                    E
+                                </span>
+                            )}
+                        </div>
                         <div className="text-xs text-gray-500">{item.artist}</div>
                     </td>
                     <td className="p-4 align-top">

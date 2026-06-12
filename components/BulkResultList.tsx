@@ -70,8 +70,20 @@ export const BulkResultList: React.FC<BulkResultListProps> = ({ results, isLoadi
                     {results.map((track) => (
                         <tr key={track.id} className={`hover:bg-white/5 transition-colors group ${track.isRefining ? 'opacity-40 pointer-events-none' : ''}`}>
                             <td className="px-6 py-4">
-                                <div className="font-bold text-white text-sm leading-tight group-hover:text-emerald-400 transition-colors mb-0.5">{track.title}</div>
-                                <div className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">{track.artist}</div>
+                                <div className="flex items-center gap-2 mb-0.5">
+                                    <div className="font-bold text-white text-sm leading-tight group-hover:text-emerald-400 transition-colors truncate">{track.title}</div>
+                                    {track.isExplicit && (
+                                        <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-[8px] font-bold uppercase tracking-tighter">
+                                            E
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="text-[10px] text-gray-500 font-mono uppercase tracking-wider flex items-center gap-1.5">
+                                    {track.artist}
+                                    {track.missingArtistInSource && (
+                                        <span className="text-amber-500 text-xs" title="Artist missing in original source data">⭐</span>
+                                    )}
+                                </div>
                             </td>
                             <td className="px-6 py-4">
                                 <div className="text-emerald-400 text-xs font-bold leading-none mb-1.5 uppercase tracking-widest">{track.genre}</div>
@@ -113,7 +125,7 @@ export const BulkResultList: React.FC<BulkResultListProps> = ({ results, isLoadi
                                         className={`p-1.5 rounded transition-all ${track.feedback === 'down' ? 'text-orange-500 bg-orange-500/10 border border-orange-500/30' : 'text-gray-600 hover:text-orange-500'}`}
                                       >
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                                         </svg>
                                       </button>
                                     </div>

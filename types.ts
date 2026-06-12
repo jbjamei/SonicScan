@@ -2,6 +2,7 @@
 export interface AudioAnalysis {
   genre: string;
   subgenre: string;
+  artists: string; // Analysis-verified artists (multi-artist support)
   confidence: number;
   breakdown: string;
   instruments: string[];
@@ -11,6 +12,8 @@ export interface AudioAnalysis {
   camelot: string;
   rhythmType: 'Straight 4/4' | 'Syncopated / Broken' | 'Half-time' | 'Complex';
   sonicMarkers: string[];
+  isExplicit?: boolean;
+  profanityTimestamps?: string[];
   feedback?: 'up' | 'down' | 'refine_more'; 
 }
 
@@ -44,6 +47,8 @@ export interface BulkSongEntry {
   bpm: string;
   key: string;
   camelot: string;
+  isExplicit?: boolean;
+  missingArtistInSource?: boolean;
   isRefining?: boolean;
   feedback?: 'up' | 'down' | 'refine_more';
 }
@@ -68,6 +73,8 @@ export interface HistoryItem {
   bpm: string;
   key: string;
   camelot: string;
+  isExplicit?: boolean;
+  missingArtistInSource?: boolean;
   feedback?: 'up' | 'down' | 'refine_more';
 }
 
@@ -81,3 +88,12 @@ export interface DashboardStats {
 }
 
 export type Page = 'scan' | 'dashboard' | 'history';
+
+declare global {
+  interface Window {
+    aistudio: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}
