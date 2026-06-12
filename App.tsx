@@ -109,8 +109,9 @@ const App: React.FC = () => {
           feedback: type
         }]);
       }
-    } catch (e) {
-      alert("Neural refinement failed.");
+    } catch (e: any) {
+      console.error(e);
+      alert(`Neural refinement failed: ${e.message || e}`);
       setBulkResults(prev => prev.map(t => t.id === target.id ? { ...t, isRefining: false } : t));
     }
   };
@@ -121,7 +122,12 @@ const App: React.FC = () => {
     try {
       const results = await analyzeImageForBulkSongs(file);
       setBulkResults(results);
-    } catch (e) { alert("Failed to scan visual data."); } finally { setIsBulkAnalyzing(false); }
+    } catch (e: any) { 
+      console.error(e);
+      alert(`Failed to scan visual data: ${e.message || e}`); 
+    } finally { 
+      setIsBulkAnalyzing(false); 
+    }
   };
 
   const handleTextBulkAnalyze = async () => {
@@ -132,7 +138,12 @@ const App: React.FC = () => {
       const results = await analyzeTracklistText(pastedText);
       setBulkResults(results);
       setPastedText('');
-    } catch (e) { alert("Neural terminal error."); } finally { setIsBulkAnalyzing(false); }
+    } catch (e: any) { 
+      console.error(e);
+      alert(`Neural terminal error: ${e.message || e}`); 
+    } finally { 
+      setIsBulkAnalyzing(false); 
+    }
   };
 
   const handleAnalyze = async (feedbackType?: 'down' | 'refine_more', fileToUse?: File) => {

@@ -41,7 +41,7 @@ export const analyzeAudio = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-pro-preview', 
+      model: 'gemini-3.5-flash', 
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ googleSearch: {} }],
@@ -89,7 +89,7 @@ export const refineSingleTrack = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-pro-preview', 
+      model: 'gemini-3.5-flash', 
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ googleSearch: {} }],
@@ -127,7 +127,7 @@ export const analyzeImageForBulkSongs = async (file: File): Promise<BulkSongEntr
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-pro-preview', 
+      model: 'gemini-3.5-flash', 
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ googleSearch: {} }],
@@ -168,7 +168,7 @@ export const analyzeTracklistText = async (text: string): Promise<BulkSongEntry[
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-pro-preview', 
+      model: 'gemini-3.5-flash', 
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ googleSearch: {} }],
